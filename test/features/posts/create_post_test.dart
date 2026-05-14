@@ -60,6 +60,7 @@ const _author = UserProfile(
   email: 'maya@example.com',
   photoUrl: null,
   bio: '',
+  interestTags: [],
   postsCount: 0,
   followersCount: 0,
   followingCount: 0,

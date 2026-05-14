@@ -42,6 +42,80 @@ final notificationControllerProvider =
       NotificationController.new,
     );
 
+enum NotificationTargetType { post, comment }
+
+class NotificationNavigationTarget {
+  const NotificationNavigationTarget({
+    required this.type,
+    required this.postId,
+  });
+
+  final NotificationTargetType type;
+  final String postId;
+}
+
+final notificationNavigationTargetProvider =
+    NotifierProvider<
+      NotificationNavigationController,
+      NotificationNavigationTarget?
+    >(NotificationNavigationController.new);
+
+final foregroundNotificationTargetProvider =
+    NotifierProvider<
+      NotificationNavigationController,
+      NotificationNavigationTarget?
+    >(NotificationNavigationController.new);
+
+final feedTargetPostIdProvider =
+    NotifierProvider<FeedTargetPostController, String?>(
+      FeedTargetPostController.new,
+    );
+
+class NotificationNavigationController
+    extends Notifier<NotificationNavigationTarget?> {
+  @override
+  NotificationNavigationTarget? build() => null;
+
+  void setFromMessage(RemoteMessage message) {
+    final target = _targetFromData(message.data);
+    if (target == null) {
+      return;
+    }
+    state = target;
+  }
+
+  void clear() {
+    state = null;
+  }
+
+  NotificationNavigationTarget? _targetFromData(Map<String, dynamic> data) {
+    final postId = data['postId']?.toString().trim() ?? '';
+    if (postId.isEmpty) {
+      return null;
+    }
+    final type = data['type']?.toString().trim().toLowerCase();
+    return NotificationNavigationTarget(
+      type: type == 'comment'
+          ? NotificationTargetType.comment
+          : NotificationTargetType.post,
+      postId: postId,
+    );
+  }
+}
+
+class FeedTargetPostController extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  void set(String postId) {
+    state = postId;
+  }
+
+  void clear() {
+    state = null;
+  }
+}
+
 class NotificationController extends AsyncNotifier<NotificationSetupState> {
   StreamSubscription<RemoteMessage>? _foregroundSubscription;
   StreamSubscription<RemoteMessage>? _openedSubscription;
@@ -90,19 +164,36 @@ class NotificationController extends AsyncNotifier<NotificationSetupState> {
       }
 
       _foregroundSubscription ??= FirebaseMessaging.onMessage.listen((message) {
-        debugPrint(
-          'FCM foreground message: id=${message.messageId}, '
-          'type=${message.data['type']}',
-        );
+        if (kDebugMode) {
+          debugPrint(
+            'FCM foreground message: id=${message.messageId}, '
+            'type=${message.data['type']}',
+          );
+        }
+        ref
+            .read(foregroundNotificationTargetProvider.notifier)
+            .setFromMessage(message);
       });
       _openedSubscription ??= FirebaseMessaging.onMessageOpenedApp.listen((
         message,
       ) {
-        debugPrint(
-          'FCM opened message: id=${message.messageId}, '
-          'type=${message.data['type']}',
-        );
+        if (kDebugMode) {
+          debugPrint(
+            'FCM opened message: id=${message.messageId}, '
+            'type=${message.data['type']}',
+          );
+        }
+        ref
+            .read(notificationNavigationTargetProvider.notifier)
+            .setFromMessage(message);
       });
+
+      final initialMessage = await messaging.getInitialMessage();
+      if (initialMessage != null) {
+        ref
+            .read(notificationNavigationTargetProvider.notifier)
+            .setFromMessage(initialMessage);
+      }
 
       state = AsyncData(
         NotificationSetupState(

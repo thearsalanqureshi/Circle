@@ -9,6 +9,7 @@ class UserProfileModel extends UserProfile {
     required super.email,
     required super.photoUrl,
     required super.bio,
+    required super.interestTags,
     required super.postsCount,
     required super.followersCount,
     required super.followingCount,
@@ -26,6 +27,7 @@ class UserProfileModel extends UserProfile {
       email: data['email'] as String?,
       photoUrl: data['photoUrl'] as String?,
       bio: data['bio'] as String? ?? '',
+      interestTags: _stringListFrom(data['interestTags']),
       postsCount: data['postsCount'] as int? ?? 0,
       followersCount: data['followersCount'] as int? ?? 0,
       followingCount: data['followingCount'] as int? ?? 0,
@@ -47,6 +49,7 @@ class UserProfileModel extends UserProfile {
       'email': email,
       'photoUrl': photoUrl,
       'bio': '',
+      'interestTags': <String>[],
       'postsCount': 0,
       'followersCount': 0,
       'followingCount': 0,
@@ -60,5 +63,16 @@ class UserProfileModel extends UserProfile {
       return value.toDate();
     }
     return null;
+  }
+
+  static List<String> _stringListFrom(Object? value) {
+    if (value is! List) {
+      return const [];
+    }
+    return [
+      for (final item in value)
+        if (item != null && item.toString().trim().isNotEmpty)
+          item.toString().trim(),
+    ];
   }
 }

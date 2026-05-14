@@ -76,6 +76,18 @@ class AiService {
     ].where((variant) => variant.text.isNotEmpty).take(3).toList();
   }
 
+  Future<String> improvePostDraft(String draft) async {
+    final trimmed = _validateText(draft, maxLength: AppLimits.postTextMaxChars);
+    final data = await _callCached('improvePostDraft', {'draft': trimmed}, () {
+      return _generateJson(
+        "Improve this social post draft while keeping the writer's meaning. "
+        "Make it clearer, warmer, and more engaging. "
+        "Return JSON only: {\"text\":\"...\"}. No markdown. Draft: $trimmed",
+      );
+    });
+    return data['text'] as String? ?? '';
+  }
+
   Future<List<String>> summarizeFeed(List<String> posts) async {
     final cleaned = posts
         .map((post) => post.trim())
@@ -135,8 +147,29 @@ class AiService {
   }
 
   Future<Map<String, dynamic>> _generateJson(String prompt) async {
-    final text = await _geminiService.generateText(prompt);
-    return _parseJson(text);
+    Object? lastError;
+    StackTrace? lastStackTrace;
+    for (var attempt = 1; attempt <= AppLimits.aiMaxAttempts; attempt += 1) {
+      try {
+        final text = await _geminiService.generateText(prompt);
+        return _parseJson(text);
+      } catch (error, stackTrace) {
+        lastError = error;
+        lastStackTrace = stackTrace;
+        if (attempt == AppLimits.aiMaxAttempts ||
+            error is! AiServiceException) {
+          break;
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 350));
+      }
+    }
+    if (lastError is AiServiceException) {
+      throw lastError;
+    }
+    Error.throwWithStackTrace(
+      const AiServiceException(AppStrings.aiFailed),
+      lastStackTrace ?? StackTrace.current,
+    );
   }
 
   Map<String, dynamic>? _readCache(String key) {
@@ -194,7 +227,11 @@ class AiService {
       if (match == null) {
         throw const AiServiceException(AppStrings.aiFailed);
       }
-      return _mapFrom(jsonDecode(match.group(0)!));
+      try {
+        return _mapFrom(jsonDecode(match.group(0)!));
+      } catch (_) {
+        throw const AiServiceException(AppStrings.aiFailed);
+      }
     }
   }
 

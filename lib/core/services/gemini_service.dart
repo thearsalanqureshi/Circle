@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
+import '../config/app_config.dart';
 import '../constants/app_limits.dart';
 import '../constants/app_strings.dart';
 
@@ -11,10 +12,8 @@ import '../constants/app_strings.dart';
 // by the current Firebase plan. For production, remove this direct API key path
 // and route AI requests back through Firebase Callable Functions.
 //
-// Do not hardcode the key in source. Pass it at build/run time:
-// flutter run --dart-define=GEMINI_API_KEY=your_key
-const _geminiApiKey = String.fromEnvironment('GEMINI_API_KEY');
-const _geminiModel = 'gemini-3.1-flash';
+// The portfolio API key is intentionally read from app_config.dart only.
+const _geminiModel = 'gemini-2.5-flash';
 const _geminiBaseUrl = 'https://generativelanguage.googleapis.com/v1';
 
 class GeminiService {
@@ -38,53 +37,87 @@ class GeminiService {
   final Dio _dio;
 
   Future<String> generateText(String prompt) async {
-    final key = _geminiApiKey.trim();
-    if (key.isEmpty) {
+    final key = geminiApiKey.trim();
+    if (key.isEmpty || key == 'YOUR_API_KEY') {
       throw const GeminiServiceException(
-        'Gemini API key is not configured. Use --dart-define=GEMINI_API_KEY=...',
+        'Gemini API key is not configured in app_config.dart.',
       );
     }
 
-    try {
-      final response = await _dio
-          .post<Map<String, dynamic>>(
-            '/models/$_geminiModel:generateContent',
-            options: Options(headers: {'x-goog-api-key': key}),
-            data: {
-              'contents': [
-                {
-                  'role': 'user',
-                  'parts': [
-                    {'text': prompt},
-                  ],
-                },
-              ],
-              'generationConfig': {
-                'temperature': 0.7,
-                'maxOutputTokens': 700,
-                'responseMimeType': 'application/json',
-              },
-            },
-          )
-          .timeout(const Duration(seconds: AppLimits.aiTimeoutSeconds));
-
-      final text = _extractText(response.data);
-      if (text == null || text.trim().isEmpty) {
+    for (var attempt = 1; attempt <= AppLimits.aiMaxAttempts; attempt += 1) {
+      try {
+        return await _requestText(key: key, prompt: prompt);
+      } on TimeoutException catch (error, stackTrace) {
+        _log(error, stackTrace);
+        if (attempt < AppLimits.aiMaxAttempts) {
+          await _retryDelay(attempt);
+          continue;
+        }
+        throw const GeminiServiceException(AppStrings.aiTimeout);
+      } on DioException catch (error, stackTrace) {
+        _logDio(error, stackTrace);
+        if (_canRetry(error) && attempt < AppLimits.aiMaxAttempts) {
+          await _retryDelay(attempt);
+          continue;
+        }
+        throw GeminiServiceException(_messageForDio(error));
+      } on GeminiServiceException {
+        rethrow;
+      } catch (error, stackTrace) {
+        _log(error, stackTrace);
         throw const GeminiServiceException(AppStrings.aiFailed);
       }
-      return text.trim();
-    } on TimeoutException catch (error, stackTrace) {
-      _log(error, stackTrace);
-      throw const GeminiServiceException(AppStrings.aiTimeout);
-    } on DioException catch (error, stackTrace) {
-      _logDio(error, stackTrace);
-      throw GeminiServiceException(_messageForDio(error));
-    } on GeminiServiceException {
-      rethrow;
-    } catch (error, stackTrace) {
-      _log(error, stackTrace);
+    }
+    throw const GeminiServiceException(AppStrings.aiFailed);
+  }
+
+  Future<String> _requestText({
+    required String key,
+    required String prompt,
+  }) async {
+    final response = await _dio
+        .post<Map<String, dynamic>>(
+          '/models/$_geminiModel:generateContent',
+          options: Options(headers: {'x-goog-api-key': key}),
+          data: {
+            'contents': [
+              {
+                'role': 'user',
+                'parts': [
+                  {'text': prompt},
+                ],
+              },
+            ],
+            'generationConfig': {
+              'temperature': 0.7,
+              'maxOutputTokens': 700,
+              // REST v1 rejects responseMimeType in generationConfig, so AI
+              // prompts request JSON text instead of relying on this field.
+            },
+          },
+        )
+        .timeout(const Duration(seconds: AppLimits.aiTimeoutSeconds));
+
+    final text = _extractText(response.data);
+    if (text == null || text.trim().isEmpty) {
       throw const GeminiServiceException(AppStrings.aiFailed);
     }
+    return text.trim();
+  }
+
+  bool _canRetry(DioException error) {
+    final statusCode = error.response?.statusCode;
+    return statusCode == 429 ||
+        statusCode == 503 ||
+        error.type == DioExceptionType.connectionTimeout ||
+        error.type == DioExceptionType.receiveTimeout ||
+        error.type == DioExceptionType.sendTimeout ||
+        error.type == DioExceptionType.connectionError ||
+        error.type == DioExceptionType.unknown;
+  }
+
+  Future<void> _retryDelay(int attempt) {
+    return Future<void>.delayed(Duration(milliseconds: 350 * attempt));
   }
 
   String? _extractText(Map<String, dynamic>? data) {
@@ -124,16 +157,27 @@ class GeminiService {
 
     final statusCode = error.response?.statusCode;
     final apiMessage = _apiErrorMessage(error.response?.data);
+    final normalizedMessage = apiMessage?.toLowerCase() ?? '';
     if (statusCode == 401 || statusCode == 403) {
-      return apiMessage ?? 'Gemini API key is invalid or not authorized.';
+      return AppStrings.aiInvalidKey;
     }
     if (statusCode == 404) {
-      return apiMessage ?? 'Gemini model $_geminiModel was not found.';
+      return AppStrings.aiModelUnavailable;
     }
     if (statusCode == 429) {
-      return 'Gemini rate limit reached. Try again later.';
+      return AppStrings.aiQuotaExceeded;
+    }
+    if (statusCode == 503 ||
+        normalizedMessage.contains('overloaded') ||
+        normalizedMessage.contains('unavailable')) {
+      return AppStrings.aiModelOverloaded;
     }
     return apiMessage ?? AppStrings.aiFailed;
+  }
+
+  @visibleForTesting
+  String messageForDioForTest(DioException error) {
+    return _messageForDio(error);
   }
 
   String? _apiErrorMessage(Object? data) {

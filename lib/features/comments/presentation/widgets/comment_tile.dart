@@ -8,9 +8,15 @@ import '../../../../core/widgets/gradient_avatar.dart';
 import '../../../posts/domain/entities/comment.dart';
 
 class CommentTile extends StatelessWidget {
-  const CommentTile({required this.comment, this.onLongPress, super.key});
+  const CommentTile({
+    required this.comment,
+    this.isHighlighted = false,
+    this.onLongPress,
+    super.key,
+  });
 
   final Comment comment;
+  final bool isHighlighted;
   final VoidCallback? onLongPress;
 
   @override
@@ -20,6 +26,7 @@ class CommentTile extends StatelessWidget {
     return GestureDetector(
       onLongPress: onLongPress,
       child: GlassCard(
+        isHighlighted: isHighlighted,
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -29,6 +36,16 @@ class CommentTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (isHighlighted) ...[
+                    Text(
+                      AppStrings.newReply,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xxs),
+                  ],
                   Text(
                     comment.username,
                     maxLines: 1,

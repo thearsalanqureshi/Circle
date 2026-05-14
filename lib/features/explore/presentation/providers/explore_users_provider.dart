@@ -41,6 +41,25 @@ final exploreUsersProvider = StreamProvider.autoDispose<List<UserProfile>>((
       .watchUsers(query: query, limit: AppLimits.exploreUsersPageSize);
 });
 
+final recentUsersProvider = StreamProvider.autoDispose<List<UserProfile>>((
+  ref,
+) {
+  return ref
+      .watch(profileRepositoryProvider)
+      .watchRecentUsers(limit: AppLimits.exploreRecentUsersLimit);
+});
+
+final activeUsersProvider = StreamProvider.autoDispose<List<UserProfile>>((
+  ref,
+) {
+  return ref
+      .watch(profileRepositoryProvider)
+      .watchActiveUsers(
+        postLimit: AppLimits.exploreActivePostsWindow,
+        userLimit: AppLimits.exploreActiveUsersLimit,
+      );
+});
+
 class ExploreSearchController extends Notifier<ExploreSearchState> {
   Timer? _debounceTimer;
 

@@ -49,6 +49,62 @@ class FirebaseProfileRepository implements ProfileRepository {
   }
 
   @override
+  Stream<List<UserProfile>> watchRecentUsers({required int limit}) {
+    return _firestore
+        .collection(FirebasePaths.users)
+        .orderBy('createdAt', descending: true)
+        .limit(limit)
+        .snapshots()
+        .asyncMap((snapshot) async {
+          if (snapshot.docs.isNotEmpty) {
+            return snapshot.docs.map(UserProfileModel.fromSnapshot).toList();
+          }
+          final fallback = await _firestore
+              .collection(FirebasePaths.users)
+              .orderBy('displayNameLowercase')
+              .limit(limit)
+              .get();
+          return fallback.docs.map(UserProfileModel.fromSnapshot).toList();
+        });
+  }
+
+  @override
+  Stream<List<UserProfile>> watchActiveUsers({
+    required int postLimit,
+    required int userLimit,
+  }) {
+    return _firestore
+        .collection(FirebasePaths.posts)
+        .orderBy('createdAt', descending: true)
+        .limit(postLimit)
+        .snapshots()
+        .asyncMap((snapshot) async {
+          final userIds = <String>[];
+          final seen = <String>{};
+          for (final post in snapshot.docs) {
+            final userId = post.data()['userId'] as String? ?? '';
+            if (userId.isNotEmpty && seen.add(userId)) {
+              userIds.add(userId);
+            }
+            if (userIds.length >= userLimit) {
+              break;
+            }
+          }
+
+          final users = <UserProfile>[];
+          for (final userId in userIds) {
+            final snapshot = await _firestore
+                .doc(FirebasePaths.user(userId))
+                .get();
+            if (snapshot.exists) {
+              users.add(UserProfileModel.fromSnapshot(snapshot));
+            }
+          }
+          return users;
+        });
+  }
+
+  @override
   Future<void> ensureUserProfile(AppUser user) async {
     final displayName = user.displayName?.trim().isNotEmpty == true
         ? user.displayName!.trim()

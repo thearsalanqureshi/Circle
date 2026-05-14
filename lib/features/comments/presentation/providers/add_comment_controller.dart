@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/constants/app_limits.dart';
+import '../../../../core/constants/app_strings.dart';
 import '../../../auth/presentation/providers/auth_repository_provider.dart';
 import '../../../profile/domain/entities/user_profile.dart';
 import '../../../profile/presentation/providers/profile_repository_provider.dart';
@@ -24,6 +26,13 @@ class AddCommentController extends AsyncNotifier<void> {
     final trimmedText = text.trim();
     final user = ref.read(currentUserProvider);
     if (user == null || trimmedText.isEmpty) {
+      return false;
+    }
+    if (trimmedText.length > AppLimits.commentTextMaxChars) {
+      state = AsyncError(
+        AppStrings.validationMaxLength(AppLimits.commentTextMaxChars),
+        StackTrace.current,
+      );
       return false;
     }
 

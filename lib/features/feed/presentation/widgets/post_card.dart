@@ -17,10 +17,16 @@ import '../../../posts/presentation/providers/optimistic_like_controller.dart';
 import '../../../posts/presentation/providers/post_repository_provider.dart';
 
 class PostCard extends StatefulWidget {
-  const PostCard({required this.post, required this.actions, super.key});
+  const PostCard({
+    required this.post,
+    required this.actions,
+    this.isHighlighted = false,
+    super.key,
+  });
 
   final Post post;
   final Widget actions;
+  final bool isHighlighted;
 
   @override
   State<PostCard> createState() => _PostCardState();
@@ -51,6 +57,7 @@ class _PostCardState extends State<PostCard> {
   @override
   Widget build(BuildContext context) {
     return GlassCard(
+      isHighlighted: widget.isHighlighted,
       padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

@@ -69,6 +69,8 @@ class _OtherProfileContent extends StatelessWidget {
           title: profile.displayName,
           subtitle: profile.email ?? AppStrings.profilePostsEmptyBody,
           photoUrl: profile.photoUrl,
+          bio: profile.bio,
+          interestTags: profile.interestTags,
           postsCount: profile.postsCount,
           followersCount: profile.followersCount,
           followingCount: profile.followingCount,

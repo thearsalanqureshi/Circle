@@ -12,6 +12,7 @@ import '../../../../core/widgets/app_error_banner.dart';
 import '../../../../core/widgets/app_gradient_button.dart';
 import '../../../../core/widgets/glass_card.dart';
 import '../../../../core/services/ai_service.dart';
+import '../../../ai_studio/presentation/providers/improve_post_controller.dart';
 import '../../../ai_studio/presentation/providers/mood_post_controller.dart';
 import '../../../ai_studio/presentation/providers/tone_variants_controller.dart';
 import '../../../posts/domain/entities/selected_post_image.dart';
@@ -160,7 +161,10 @@ class _CreatePostAiTools extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final moodState = ref.watch(moodPostControllerProvider);
+    final improveState = ref.watch(improvePostControllerProvider);
     final toneState = ref.watch(toneVariantsControllerProvider);
+    final isAiBusy =
+        moodState.isLoading || improveState.isLoading || toneState.isLoading;
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -176,6 +180,11 @@ class _CreatePostAiTools extends ConsumerWidget {
               AppStrings.aiStudio,
               style: Theme.of(context).textTheme.titleSmall,
             ),
+            const SizedBox(height: AppSpacing.xxs),
+            Text(
+              AppStrings.improveWithAi,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
             const SizedBox(height: AppSpacing.sm),
             TextField(
               controller: moodController,
@@ -190,8 +199,21 @@ class _CreatePostAiTools extends ConsumerWidget {
               spacing: AppSpacing.sm,
               runSpacing: AppSpacing.sm,
               children: [
+                FilledButton.icon(
+                  onPressed: isAiBusy
+                      ? null
+                      : () {
+                          ref
+                              .read(improvePostControllerProvider.notifier)
+                              .improve(draftController.text);
+                        },
+                  icon: improveState.isLoading
+                      ? const _MiniLoader()
+                      : const Icon(Icons.auto_awesome_outlined),
+                  label: const Text(AppStrings.improveMyPost),
+                ),
                 OutlinedButton.icon(
-                  onPressed: moodState.isLoading
+                  onPressed: isAiBusy
                       ? null
                       : () {
                           ref
@@ -204,7 +226,7 @@ class _CreatePostAiTools extends ConsumerWidget {
                   label: const Text(AppStrings.moodToPost),
                 ),
                 OutlinedButton.icon(
-                  onPressed: toneState.isLoading
+                  onPressed: isAiBusy
                       ? null
                       : () {
                           ref
@@ -214,9 +236,20 @@ class _CreatePostAiTools extends ConsumerWidget {
                   icon: toneState.isLoading
                       ? const _MiniLoader()
                       : const Icon(Icons.tune_outlined),
-                  label: const Text(AppStrings.toneTransformer),
+                  label: const Text(AppStrings.rewriteChangeTone),
                 ),
               ],
+            ),
+            _ImprovePostResult(
+              state: improveState,
+              onUse: (text) {
+                draftController.text = text;
+              },
+              onRetry: () {
+                ref
+                    .read(improvePostControllerProvider.notifier)
+                    .improve(draftController.text);
+              },
             ),
             _MoodPostResult(
               state: moodState,
@@ -243,6 +276,47 @@ class _CreatePostAiTools extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ImprovePostResult extends StatelessWidget {
+  const _ImprovePostResult({
+    required this.state,
+    required this.onUse,
+    required this.onRetry,
+  });
+
+  final AsyncValue<String?> state;
+  final ValueChanged<String> onUse;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return state.when(
+      data: (text) {
+        if (text == null || text.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        return _AiInlineResult(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(text),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () => onUse(text),
+                  child: const Text(AppStrings.useImproved),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+      loading: () => const _AiInlineLoading(),
+      error: (error, stackTrace) =>
+          _AiInlineError(error: error, onRetry: onRetry),
     );
   }
 }
@@ -444,12 +518,18 @@ class _PostTextField extends StatelessWidget {
       controller: controller,
       minLines: 4,
       maxLines: 8,
+      maxLength: AppLimits.postTextMaxChars,
       textInputAction: TextInputAction.newline,
-      validator: Validators.required,
+      validator: (value) {
+        return Validators.requiredMaxLength(value, AppLimits.postTextMaxChars);
+      },
       style: Theme.of(
         context,
       ).textTheme.bodyMedium?.copyWith(color: colors.textPrimary),
-      decoration: const InputDecoration(hintText: AppStrings.postTextHint),
+      decoration: const InputDecoration(
+        hintText: AppStrings.postTextHint,
+        counterText: '',
+      ),
     );
   }
 }

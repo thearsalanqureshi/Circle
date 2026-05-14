@@ -44,4 +44,15 @@ class Validators {
     }
     return null;
   }
+
+  static String? maxLength(String? value, int limit) {
+    if (value != null && value.trim().length > limit) {
+      return AppStrings.validationMaxLength(limit);
+    }
+    return null;
+  }
+
+  static String? requiredMaxLength(String? value, int limit) {
+    return required(value) ?? maxLength(value, limit);
+  }
 }

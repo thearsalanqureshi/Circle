@@ -56,12 +56,27 @@ class UserCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
           Text(
             user.bio.trim().isEmpty ? AppStrings.profileBioFallback : user.bio,
-            maxLines: 3,
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(
               context,
             ).textTheme.bodySmall?.copyWith(color: colors.textSecondary),
           ),
+          if (user.interestTags.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.xs,
+              runSpacing: AppSpacing.xs,
+              children: [
+                for (final tag in user.interestTags.take(3))
+                  Chip(
+                    label: Text(tag),
+                    visualDensity: VisualDensity.compact,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+              ],
+            ),
+          ],
           const SizedBox(height: AppSpacing.md),
           Wrap(
             spacing: AppSpacing.md,

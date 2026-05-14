@@ -52,7 +52,15 @@ void main() {
 
 Widget _exploreScreenForTest() {
   return ProviderScope(
-    overrides: [exploreUsersProvider.overrideWithValue(AsyncData(_testUsers))],
+    overrides: [
+      exploreUsersProvider.overrideWithValue(AsyncData(_testUsers)),
+      recentUsersProvider.overrideWithValue(
+        AsyncData(_testUsers.take(4).toList()),
+      ),
+      activeUsersProvider.overrideWithValue(
+        AsyncData(_testUsers.skip(4).toList()),
+      ),
+    ],
     child: const ExploreScreen(),
   );
 }
@@ -65,6 +73,7 @@ final _testUsers = List<UserProfile>.generate(
     email: 'user$index@example.com',
     photoUrl: null,
     bio: 'Test bio',
+    interestTags: const ['Flutter', 'AI'],
     postsCount: index,
     followersCount: index * 10,
     followingCount: 0,

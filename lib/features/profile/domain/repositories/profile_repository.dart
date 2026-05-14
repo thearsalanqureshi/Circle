@@ -9,5 +9,12 @@ abstract class ProfileRepository {
     required int limit,
   });
 
+  Stream<List<UserProfile>> watchRecentUsers({required int limit});
+
+  Stream<List<UserProfile>> watchActiveUsers({
+    required int postLimit,
+    required int userLimit,
+  });
+
   Future<void> ensureUserProfile(AppUser user);
 }

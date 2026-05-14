@@ -24,5 +24,17 @@ void main() {
       );
       expect(Validators.confirmPassword('123456', '123456'), isNull);
     });
+
+    test('validates maximum text length', () {
+      expect(
+        Validators.maxLength('abcd', 3),
+        AppStrings.validationMaxLength(3),
+      );
+      expect(Validators.maxLength('abc', 3), isNull);
+      expect(
+        Validators.requiredMaxLength('', 3),
+        AppStrings.validationRequired,
+      );
+    });
   });
 }

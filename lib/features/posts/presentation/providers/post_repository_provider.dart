@@ -49,14 +49,14 @@ final visibleFeedPostsProvider = Provider<AsyncValue<List<Post>>>((ref) {
   final fallbackPosts = _mergeUniquePosts([
     ..._mergeLocalPosts(remotePosts: cachedPosts, localPosts: localPosts),
     ...pagedPosts,
-  ]);
+  ]).rankForFeed();
   return remotePosts.when(
     data: (posts) {
       final merged = _mergeUniquePosts([
         ..._mergeLocalPosts(remotePosts: posts, localPosts: localPosts),
         ...cachedPosts,
         ...pagedPosts,
-      ]);
+      ]).rankForFeed();
       debugPrint(
         'visibleFeedPostsProvider remote=${posts.length} '
         'local=${localPosts.length} merged=${merged.length}',
@@ -153,6 +153,20 @@ final visibleUserPostsProvider =
         },
       );
     });
+
+final postByIdProvider = Provider.family<Post?, String>((ref, postId) {
+  final visiblePosts =
+      ref.watch(visibleFeedPostsProvider).asData?.value ?? const <Post>[];
+  final cachedPosts = ref.watch(feedPostCacheProvider);
+  final localPosts = ref.watch(localPostOverlayProvider);
+
+  for (final post in [...localPosts, ...visiblePosts, ...cachedPosts]) {
+    if (post.id == postId) {
+      return post;
+    }
+  }
+  return null;
+});
 
 final localPostOverlayProvider =
     NotifierProvider<LocalPostOverlayController, List<Post>>(
@@ -383,6 +397,24 @@ List<Post> _mergeUniquePosts(List<Post> posts) {
     for (final post in posts)
       if (seen.add(post.id)) post,
   ];
+}
+
+extension _FeedRanking on List<Post> {
+  List<Post> rankForFeed() {
+    final ranked = [...this];
+    ranked.sort((a, b) => _feedScore(b).compareTo(_feedScore(a)));
+    return ranked;
+  }
+}
+
+int _feedScore(Post post) {
+  final createdAt =
+      post.createdAt?.millisecondsSinceEpoch ??
+      DateTime.fromMillisecondsSinceEpoch(0).millisecondsSinceEpoch;
+  final engagementMinutes = (post.likesCount * 2 + post.commentsCount * 3)
+      .clamp(0, 30)
+      .toInt();
+  return createdAt + Duration(minutes: engagementMinutes).inMilliseconds;
 }
 
 DateTime? _oldestCreatedAt(List<Post> posts) {

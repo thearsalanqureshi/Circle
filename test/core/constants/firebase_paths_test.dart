@@ -9,6 +9,8 @@ void main() {
     });
 
     test('builds required post subcollection paths', () {
+      expect(FirebasePaths.likes, 'likes');
+      expect(FirebasePaths.comments, 'comments');
       expect(FirebasePaths.postLike('p1', 'u1'), 'posts/p1/likes/u1');
       expect(FirebasePaths.postComment('p1', 'c1'), 'posts/p1/comments/c1');
     });

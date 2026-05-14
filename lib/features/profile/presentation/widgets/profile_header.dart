@@ -10,6 +10,8 @@ class ProfileHeader extends StatelessWidget {
   const ProfileHeader({
     required this.title,
     required this.subtitle,
+    required this.bio,
+    required this.interestTags,
     required this.postsCount,
     required this.followersCount,
     required this.followingCount,
@@ -19,6 +21,8 @@ class ProfileHeader extends StatelessWidget {
 
   final String title;
   final String subtitle;
+  final String bio;
+  final List<String> interestTags;
   final int postsCount;
   final int followersCount;
   final int followingCount;
@@ -63,6 +67,36 @@ class ProfileHeader extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: AppSpacing.md),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              bio.trim().isEmpty ? AppStrings.profileBioFallback : bio,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: colors.textSecondary),
+            ),
+          ),
+          if (interestTags.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Wrap(
+                spacing: AppSpacing.xs,
+                runSpacing: AppSpacing.xs,
+                children: [
+                  for (final tag in interestTags.take(4))
+                    Chip(
+                      label: Text(tag),
+                      visualDensity: VisualDensity.compact,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: AppSpacing.lg),
           Row(
             children: [

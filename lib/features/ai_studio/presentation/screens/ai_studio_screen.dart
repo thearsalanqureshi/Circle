@@ -55,6 +55,11 @@ class _AiStudioScreenState extends ConsumerState<AiStudioScreen> {
             AppStrings.aiStudioEmptyBody,
             style: Theme.of(context).textTheme.bodyMedium,
           ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            AppStrings.aiInlineWritingTip,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
           const SizedBox(height: AppSpacing.lg),
           _MoodPostCard(controller: _moodController),
           const SizedBox(height: AppSpacing.md),

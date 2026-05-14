@@ -4,6 +4,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/constants/app_limits.dart';
+import '../../../../core/constants/app_strings.dart';
 import '../../../auth/presentation/providers/auth_repository_provider.dart';
 import '../../../profile/domain/entities/user_profile.dart';
 import '../../../profile/presentation/providers/profile_repository_provider.dart';
@@ -30,6 +32,13 @@ class CreatePostController extends AsyncNotifier<void> {
       debugPrint(
         'CreatePostController: aborted. '
         'uid=${user?.id}, textEmpty=${trimmedText.isEmpty}',
+      );
+      return false;
+    }
+    if (trimmedText.length > AppLimits.postTextMaxChars) {
+      state = AsyncError(
+        AppStrings.validationMaxLength(AppLimits.postTextMaxChars),
+        StackTrace.current,
       );
       return false;
     }

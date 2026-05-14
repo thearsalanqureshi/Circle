@@ -4,9 +4,14 @@ class AppLimits {
   static const feedPostsPageSize = 20;
   static const feedPostsCacheSize = 50;
   static const feedSkeletonPostCount = 3;
+  static const postTextMaxChars = 800;
+  static const commentTextMaxChars = 500;
   static const commentsPageSize = 50;
   static const profilePostsPageSize = 30;
   static const exploreUsersPageSize = 30;
+  static const exploreRecentUsersLimit = 8;
+  static const exploreActiveUsersLimit = 8;
+  static const exploreActivePostsWindow = 24;
   static const exploreSkeletonUserCount = 4;
   static const profileSkeletonTileCount = 6;
   static const firestoreDocumentMaxBytes = 1024 * 1024;
@@ -16,6 +21,7 @@ class AppLimits {
   static const pickedImageMaxHeight = 960.0;
   static const pickedImageQuality = 60;
   static const aiTimeoutSeconds = 15;
+  static const aiMaxAttempts = 2;
   static const aiCacheTtl = Duration(hours: 1);
   static const aiMoodMaxChars = 160;
   static const aiDraftMaxChars = 800;

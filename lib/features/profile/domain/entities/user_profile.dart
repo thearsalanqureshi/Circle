@@ -7,6 +7,7 @@ class UserProfile {
     required this.email,
     required this.photoUrl,
     required this.bio,
+    required this.interestTags,
     required this.postsCount,
     required this.followersCount,
     required this.followingCount,
@@ -19,6 +20,7 @@ class UserProfile {
   final String? email;
   final String? photoUrl;
   final String bio;
+  final List<String> interestTags;
   final int postsCount;
   final int followersCount;
   final int followingCount;
@@ -34,6 +36,7 @@ class UserProfile {
       email: user.email,
       photoUrl: null,
       bio: '',
+      interestTags: const [],
       postsCount: 0,
       followersCount: 0,
       followingCount: 0,

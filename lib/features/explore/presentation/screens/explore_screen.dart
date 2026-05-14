@@ -18,6 +18,9 @@ class ExploreScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final query = ref.watch(
+      exploreSearchControllerProvider.select((state) => state.debouncedQuery),
+    );
     final users = ref.watch(exploreUsersProvider);
 
     return AppScreenLayout(
@@ -30,25 +33,172 @@ class ExploreScreen extends ConsumerWidget {
                 .read(exploreSearchControllerProvider.notifier)
                 .update,
           ),
-          const SizedBox(height: AppSpacing.lg),
-          const _SectionTitle(AppStrings.people),
-          const SizedBox(height: AppSpacing.md),
           Expanded(
-            child: users.when(
-              data: (items) => _ExploreUsersList(users: items),
-              loading: () => const _ExploreLoadingList(),
-              error: (error, stackTrace) => AppEmptyState(
-                icon: Icons.search_off_outlined,
-                title: AppStrings.exploreEmptyTitle,
-                body: BackendErrorMapper.messageFor(
-                  error,
-                  AppStrings.exploreLoadFailed,
-                ),
-              ),
-            ),
+            child: query.isEmpty
+                ? const _ExploreDiscoveryContent()
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: AppSpacing.lg),
+                      const _SectionTitle(AppStrings.people),
+                      const SizedBox(height: AppSpacing.md),
+                      Expanded(
+                        child: users.when(
+                          data: (items) => _ExploreUsersList(users: items),
+                          loading: () => const _ExploreLoadingList(),
+                          error: (error, stackTrace) => AppEmptyState(
+                            icon: Icons.search_off_outlined,
+                            title: AppStrings.exploreEmptyTitle,
+                            body: BackendErrorMapper.messageFor(
+                              error,
+                              AppStrings.exploreLoadFailed,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ExploreDiscoveryContent extends ConsumerWidget {
+  const _ExploreDiscoveryContent();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final recentUsers = ref.watch(recentUsersProvider);
+    final activeUsers = ref.watch(activeUsersProvider);
+
+    return CustomScrollView(
+      key: const PageStorageKey<String>('explore_discovery'),
+      slivers: [
+        const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.lg)),
+        _ExploreUserSection(title: AppStrings.recent, state: recentUsers),
+        const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.lg)),
+        _ExploreUserSection(title: AppStrings.active, state: activeUsers),
+        const SliverToBoxAdapter(
+          child: SizedBox(height: AppSizes.shellScrollBottomPadding),
+        ),
+      ],
+    );
+  }
+}
+
+class _ExploreUserSection extends StatelessWidget {
+  const _ExploreUserSection({required this.title, required this.state});
+
+  final String title;
+  final AsyncValue<List<UserProfile>> state;
+
+  @override
+  Widget build(BuildContext context) {
+    return state.when(
+      data: (users) {
+        if (users.isEmpty) {
+          return const SliverToBoxAdapter(child: SizedBox.shrink());
+        }
+        return SliverMainAxisGroup(
+          slivers: [
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                child: _SectionTitle(title),
+              ),
+            ),
+            _ExploreUsersSliver(users: users),
+          ],
+        );
+      },
+      loading: () => SliverMainAxisGroup(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.md),
+              child: _SectionTitle(title),
+            ),
+          ),
+          const _ExploreLoadingSliver(),
+        ],
+      ),
+      error: (error, stackTrace) => SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.md),
+          child: Text(
+            BackendErrorMapper.messageFor(error, AppStrings.exploreLoadFailed),
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ExploreUsersSliver extends StatelessWidget {
+  const _ExploreUsersSliver({required this.users});
+
+  final List<UserProfile> users;
+
+  @override
+  Widget build(BuildContext context) {
+    return SliverLayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.crossAxisExtent;
+        final isWide = width >= AppBreakpoints.mobile;
+        if (!isWide) {
+          return SliverList.separated(
+            itemCount: users.length,
+            separatorBuilder: (context, index) {
+              return const SizedBox(height: AppSpacing.md);
+            },
+            itemBuilder: (context, index) {
+              return UserCard(
+                key: ValueKey(users[index].id),
+                user: users[index],
+              );
+            },
+          );
+        }
+
+        return SliverGrid.builder(
+          itemCount: users.length,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            mainAxisSpacing: AppSpacing.md,
+            crossAxisSpacing: AppSpacing.md,
+            childAspectRatio: AppSizes.gridAspectWide,
+          ),
+          itemBuilder: (context, index) {
+            return UserCard(key: ValueKey(users[index].id), user: users[index]);
+          },
+        );
+      },
+    );
+  }
+}
+
+class _ExploreLoadingSliver extends StatelessWidget {
+  const _ExploreLoadingSliver();
+
+  @override
+  Widget build(BuildContext context) {
+    return SliverList.separated(
+      itemCount: AppLimits.exploreSkeletonUserCount,
+      separatorBuilder: (context, index) {
+        return const SizedBox(height: AppSpacing.md);
+      },
+      itemBuilder: (context, index) {
+        return DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.2),
+          ),
+          child: const SizedBox(height: AppSizes.inputMinHeight * 2),
+        );
+      },
     );
   }
 }
