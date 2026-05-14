@@ -39,7 +39,6 @@ Circle is a modern social media app focused on content quality and user interact
 
 ##  Tech Stack & Architecture
 
-This project is built as a showcase of production-grade Flutter development, emphasizing clean, maintainable code.
 
 | Category | Choice | Justification |
 |---|---|---|
@@ -111,7 +110,6 @@ The Flutter app never directly calls the Gemini API or stores an API key. The se
 4.  **Cloud Function** makes the request to the Gemini API.
 5.  **Cloud Function** processes and returns the result to the Flutter App.
 
-This ensures API costs are controlled and your key is never exposed client-side.
 
 ---
 
